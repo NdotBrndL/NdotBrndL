@@ -1,34 +1,37 @@
---// NDOT HUB SAFE UNIVERSAL V2
---// Android + PC
+--// NDOT HUB SAFE UNIVERSAL V2 FIXED
 --// Delta / Hydrogen / Codex Support
---// Stable Universal Edition
+--// Android + PC Stable Edition
 
-repeat task.wait() until game:IsLoaded()
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
 
 ---------------------------------------------------
--- LOAD UI LIBRARY
+-- SAFE EXECUTOR CHECK
+---------------------------------------------------
+
+if not cloneref then
+    getgenv().cloneref = function(v)
+        return v
+    end
+end
+
+---------------------------------------------------
+-- LOAD RAYFIELD
 ---------------------------------------------------
 
 local Rayfield
 
-local urls = {
-    "https://sirius.menu/rayfield",
-    "https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
-}
+local success, result = pcall(function()
+    return loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
+    ))()
+end)
 
-for _,url in ipairs(urls) do
-
-    local ok = pcall(function()
-        Rayfield = loadstring(game:HttpGet(url))()
-    end)
-
-    if ok and Rayfield then
-        break
-    end
-end
-
-if not Rayfield then
-    warn("UI gagal dimuat")
+if success and result then
+    Rayfield = result
+else
+    warn("Failed load Rayfield UI")
     return
 end
 
@@ -55,12 +58,12 @@ end
 
 local function Humanoid()
     local char = Character()
-    return char:FindFirstChildWhichIsA("Humanoid")
+    return char and char:FindFirstChildOfClass("Humanoid")
 end
 
 local function Root()
     local char = Character()
-    return char:FindFirstChild("HumanoidRootPart")
+    return char and char:FindFirstChild("HumanoidRootPart")
 end
 
 ---------------------------------------------------
@@ -71,12 +74,10 @@ local Window = Rayfield:CreateWindow({
 
     Name = "NDOT_BRNDL",
     LoadingTitle = "NDOT_BRNDL",
-    LoadingSubtitle = "Universal Stable Edition",
+    LoadingSubtitle = "Universal Stable",
 
     ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "NDOT_HUB",
-        FileName = "SAFE_CONFIG"
+        Enabled = false
     },
 
     Discord = {
@@ -97,7 +98,7 @@ local ServerTab = Window:CreateTab("Server", 4483362458)
 local AvatarTab = Window:CreateTab("Avatar", 4483362458)
 
 ---------------------------------------------------
--- PLAYER VALUES
+-- VALUES
 ---------------------------------------------------
 
 local WalkSpeed = 16
@@ -105,6 +106,7 @@ local JumpPower = 50
 local InfiniteJump = false
 local Noclip = false
 local Fly = false
+local FlySpeed = 60
 
 ---------------------------------------------------
 -- WALKSPEED
@@ -195,10 +197,8 @@ PlayerTab:CreateToggle({
 })
 
 ---------------------------------------------------
--- FLY CONTROL SYSTEM
+-- FLY
 ---------------------------------------------------
-
-local FlySpeed = 60
 
 local BV
 local BG
@@ -212,7 +212,6 @@ PlayerTab:CreateSlider({
     CurrentValue = 60,
 
     Callback = function(v)
-
         FlySpeed = v
     end
 })
@@ -251,30 +250,17 @@ PlayerTab:CreateToggle({
         end
 
         BV = Instance.new("BodyVelocity")
-
-        BV.MaxForce = Vector3.new(
-            math.huge,
-            math.huge,
-            math.huge
-        )
-
+        BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         BV.Velocity = Vector3.zero
         BV.Parent = hrp
 
         BG = Instance.new("BodyGyro")
-
-        BG.MaxTorque = Vector3.new(
-            math.huge,
-            math.huge,
-            math.huge
-        )
-
+        BG.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
         BG.P = 10000
         BG.CFrame = workspace.CurrentCamera.CFrame
         BG.Parent = hrp
 
-        FlyConnection =
-            RunService.RenderStepped:Connect(function()
+        FlyConnection = RunService.RenderStepped:Connect(function()
 
             if not Fly then return end
 
@@ -283,13 +269,13 @@ PlayerTab:CreateToggle({
             if not hum then return end
 
             local cam = workspace.CurrentCamera
-            local move = hum.MoveDirection
+            local moveDir = hum.MoveDirection
 
-            local direction =
-                (cam.CFrame.RightVector * move.X)
-                + (cam.CFrame.LookVector * move.Z)
-
-            BV.Velocity = direction * FlySpeed
+            BV.Velocity = Vector3.new(
+                moveDir.X * FlySpeed,
+                0,
+                moveDir.Z * FlySpeed
+            )
 
             BG.CFrame = cam.CFrame
         end)
@@ -366,7 +352,7 @@ local function AddESP(plr)
         h.OutlineTransparency = 0
         h.Parent = char
 
-        table.insert(ESPStorage,h)
+        table.insert(ESPStorage, h)
     end
 
     Apply()
@@ -403,7 +389,7 @@ Players.PlayerAdded:Connect(function(plr)
     if ESPEnabled then
         AddESP(plr)
     end
-})
+end)
 
 ---------------------------------------------------
 -- FULLBRIGHT
@@ -463,8 +449,10 @@ UtilityTab:CreateToggle({
                 end)
             end
 
-            if setfpscap then
-                setfpscap(30)
+            if typeof(setfpscap) == "function" then
+                pcall(function()
+                    setfpscap(30)
+                end)
             end
 
         else
@@ -490,7 +478,6 @@ end)
 
 local AvatarLoop = false
 local SelectedPlayer = nil
-
 local PlayerList = {}
 
 local function RefreshPlayers()
@@ -507,26 +494,25 @@ end
 
 RefreshPlayers()
 
-Players.PlayerAdded:Connect(RefreshPlayers)
-Players.PlayerRemoving:Connect(RefreshPlayers)
+Players.PlayerAdded:Connect(function()
+    RefreshPlayers()
+end)
 
-task.spawn(function()
-
-    while task.wait(5) do
-
-        pcall(function()
-            RefreshPlayers()
-        end)
-    end
+Players.PlayerRemoving:Connect(function()
+    RefreshPlayers()
 end)
 
 AvatarTab:CreateDropdown({
 
     Name = "Select Player",
     Options = PlayerList,
-    CurrentOption = nil,
+    CurrentOption = {},
 
     Callback = function(v)
+
+        if typeof(v) == "table" then
+            v = v[1]
+        end
 
         SelectedPlayer = Players:FindFirstChild(v)
     end
@@ -604,7 +590,7 @@ AvatarTab:CreateToggle({
 })
 
 ---------------------------------------------------
--- COPY JOB ID
+-- SERVER
 ---------------------------------------------------
 
 ServerTab:CreateButton({
@@ -619,10 +605,6 @@ ServerTab:CreateButton({
     end
 })
 
----------------------------------------------------
--- REJOIN
----------------------------------------------------
-
 ServerTab:CreateButton({
 
     Name = "Rejoin",
@@ -635,10 +617,6 @@ ServerTab:CreateButton({
         )
     end
 })
-
----------------------------------------------------
--- RESET
----------------------------------------------------
 
 ServerTab:CreateButton({
 
@@ -655,7 +633,7 @@ ServerTab:CreateButton({
 })
 
 ---------------------------------------------------
--- NOTIFY
+-- NOTIFICATION
 ---------------------------------------------------
 
 Rayfield:Notify({
