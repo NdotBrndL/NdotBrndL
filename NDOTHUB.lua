@@ -1,187 +1,238 @@
---// NDOT HUB UNIVERSAL SAFE EDITION
---// Android & PC Support
---// Universal Map Support
---// Anti Error Version
+--// NDOT HUB SAFE UNIVERSAL V2
+--// Android + PC
+--// Delta / Hydrogen / Codex Support
+--// Stable Universal Edition
 
-local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet(
-        'https://raw.githubusercontent.com/shlexware/Rayfield/main/source'
-    ))()
-end)
+repeat task.wait() until game:IsLoaded()
 
-if not success then
-    warn("Rayfield gagal dimuat")
+---------------------------------------------------
+-- LOAD UI LIBRARY
+---------------------------------------------------
+
+local Rayfield
+
+local urls = {
+    "https://sirius.menu/rayfield",
+    "https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
+}
+
+for _,url in ipairs(urls) do
+
+    local ok = pcall(function()
+        Rayfield = loadstring(game:HttpGet(url))()
+    end)
+
+    if ok and Rayfield then
+        break
+    end
+end
+
+if not Rayfield then
+    warn("UI gagal dimuat")
     return
 end
 
+---------------------------------------------------
 -- SERVICES
+---------------------------------------------------
+
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 
-local player = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
+---------------------------------------------------
 -- SAFE FUNCTIONS
-local function getCharacter()
-    return player.Character or player.CharacterAdded:Wait()
+---------------------------------------------------
+
+local function Character()
+    return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
-local function getHumanoid()
-    local character = getCharacter()
-    return character:FindFirstChildOfClass("Humanoid")
+local function Humanoid()
+    local char = Character()
+    return char:FindFirstChildWhichIsA("Humanoid")
 end
 
-local function getHRP()
-    local character = getCharacter()
-    return character:FindFirstChild("HumanoidRootPart")
+local function Root()
+    local char = Character()
+    return char:FindFirstChild("HumanoidRootPart")
 end
 
+---------------------------------------------------
 -- WINDOW
+---------------------------------------------------
+
 local Window = Rayfield:CreateWindow({
-    Name = "NDOT HUB | SAFE UNIVERSAL",
+    Name = "NDOT HUB SAFE V2",
     LoadingTitle = "NDOT HUB",
-    LoadingSubtitle = "Universal Roblox Script",
+    LoadingSubtitle = "Universal Stable Edition",
+
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = "NDOTHUB",
-        FileName = "UniversalConfig"
+        FolderName = "NDOT_HUB",
+        FileName = "SAFE_CONFIG"
     },
+
     Discord = {
         Enabled = false
     },
+
     KeySystem = false
 })
 
--- TAB
-local MainTab = Window:CreateTab("Main", 4483362458)
-local FunTab = Window:CreateTab("Fun", 4483362458)
-local MiscTab = Window:CreateTab("Misc", 4483362458)
-
 ---------------------------------------------------
--- SPEED
+-- TABS
 ---------------------------------------------------
 
-MainTab:CreateSlider({
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+local VisualTab = Window:CreateTab("Visual", 4483362458)
+local UtilityTab = Window:CreateTab("Utility", 4483362458)
+local ServerTab = Window:CreateTab("Server", 4483362458)
+
+---------------------------------------------------
+-- PLAYER VALUES
+---------------------------------------------------
+
+local WalkSpeed = 16
+local JumpPower = 50
+local InfiniteJump = false
+local Noclip = false
+local Fly = false
+
+---------------------------------------------------
+-- WALKSPEED
+---------------------------------------------------
+
+PlayerTab:CreateSlider({
     Name = "WalkSpeed",
-    Range = {16, 200},
+    Range = {16,120},
     Increment = 1,
     CurrentValue = 16,
 
-    Callback = function(Value)
+    Callback = function(v)
 
-        local humanoid = getHumanoid()
+        WalkSpeed = v
 
-        if humanoid then
-            humanoid.WalkSpeed = Value
+        local hum = Humanoid()
+
+        if hum then
+            hum.WalkSpeed = v
         end
-    end,
+    end
 })
 
 ---------------------------------------------------
--- JUMP
+-- JUMPPOWER
 ---------------------------------------------------
 
-MainTab:CreateSlider({
+PlayerTab:CreateSlider({
     Name = "JumpPower",
-    Range = {50, 300},
+    Range = {50,150},
     Increment = 1,
     CurrentValue = 50,
 
-    Callback = function(Value)
+    Callback = function(v)
 
-        local humanoid = getHumanoid()
+        JumpPower = v
 
-        if humanoid then
-            humanoid.JumpPower = Value
+        local hum = Humanoid()
+
+        if hum then
+            hum.JumpPower = v
         end
-    end,
+    end
 })
+
+---------------------------------------------------
+-- APPLY AFTER RESPAWN
+---------------------------------------------------
+
+LocalPlayer.CharacterAdded:Connect(function()
+
+    task.wait(1)
+
+    local hum = Humanoid()
+
+    if hum then
+        hum.WalkSpeed = WalkSpeed
+        hum.JumpPower = JumpPower
+    end
+end)
 
 ---------------------------------------------------
 -- INFINITE JUMP
 ---------------------------------------------------
 
-local InfiniteJump = false
-
 UIS.JumpRequest:Connect(function()
 
     if InfiniteJump then
 
-        local humanoid = getHumanoid()
+        local hum = Humanoid()
 
-        if humanoid then
-            humanoid:ChangeState(
-                Enum.HumanoidStateType.Jumping
-            )
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end
 end)
 
-MainTab:CreateToggle({
+PlayerTab:CreateToggle({
     Name = "Infinite Jump",
     CurrentValue = false,
 
-    Callback = function(Value)
-        InfiniteJump = Value
-    end,
+    Callback = function(v)
+        InfiniteJump = v
+    end
 })
 
 ---------------------------------------------------
 -- FLY
 ---------------------------------------------------
 
-local Fly = false
-local BV
+local FlyConnection
 
-MainTab:CreateToggle({
+PlayerTab:CreateToggle({
     Name = "Fly",
     CurrentValue = false,
 
-    Callback = function(Value)
+    Callback = function(v)
 
-        Fly = Value
+        Fly = v
 
-        local hrp = getHRP()
-
-        if not hrp then return end
-
-        if Value then
-
-            BV = Instance.new("BodyVelocity")
-            BV.MaxForce = Vector3.new(
-                math.huge,
-                math.huge,
-                math.huge
-            )
-
-            BV.Velocity = Vector3.new(0,50,0)
-            BV.Parent = hrp
-
-        else
-
-            if BV then
-                BV:Destroy()
-                BV = nil
-            end
+        if FlyConnection then
+            FlyConnection:Disconnect()
+            FlyConnection = nil
         end
-    end,
+
+        if Fly then
+
+            FlyConnection = RunService.RenderStepped:Connect(function()
+
+                local hrp = Root()
+
+                if hrp then
+                    hrp.Velocity = Vector3.new(0,35,0)
+                end
+            end)
+        end
+    end
 })
 
 ---------------------------------------------------
 -- NOCLIP
 ---------------------------------------------------
 
-local noclip = false
-
 RunService.Stepped:Connect(function()
 
-    if noclip then
+    if Noclip then
 
-        local character = getCharacter()
+        local char = Character()
 
-        for _,v in pairs(character:GetDescendants()) do
+        for _,v in ipairs(char:GetDescendants()) do
 
             if v:IsA("BasePart") then
                 v.CanCollide = false
@@ -190,167 +241,206 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-MainTab:CreateToggle({
+PlayerTab:CreateToggle({
     Name = "Noclip",
     CurrentValue = false,
 
-    Callback = function(Value)
-        noclip = Value
-    end,
+    Callback = function(v)
+        Noclip = v
+    end
 })
 
 ---------------------------------------------------
--- ESP
+-- PLAYER ESP
 ---------------------------------------------------
 
 local ESPEnabled = false
-local espTable = {}
+local ESPStorage = {}
 
-local function clearESP()
+local function ClearESP()
 
-    for _,v in pairs(espTable) do
+    for _,v in pairs(ESPStorage) do
 
         if v then
             v:Destroy()
         end
     end
 
-    espTable = {}
+    ESPStorage = {}
 end
 
-local function createESP()
+local function AddESP(plr)
 
-    clearESP()
+    if not ESPEnabled then return end
+    if plr == LocalPlayer then return end
 
-    for _,plr in pairs(Players:GetPlayers()) do
+    local function Apply()
 
-        if plr ~= player and plr.Character then
+        local char = plr.Character
 
-            local h = Instance.new("Highlight")
-            h.Parent = plr.Character
+        if not char then return end
 
-            table.insert(espTable,h)
+        if char:FindFirstChild("NDOT_ESP") then
+            return
         end
+
+        local h = Instance.new("Highlight")
+
+        h.Name = "NDOT_ESP"
+        h.FillTransparency = 0.5
+        h.OutlineTransparency = 0
+        h.Parent = char
+
+        table.insert(ESPStorage,h)
     end
+
+    Apply()
+
+    plr.CharacterAdded:Connect(function()
+        task.wait(1)
+        Apply()
+    end)
 end
 
-MainTab:CreateToggle({
+VisualTab:CreateToggle({
     Name = "ESP Player",
     CurrentValue = false,
 
-    Callback = function(Value)
+    Callback = function(v)
 
-        ESPEnabled = Value
+        ESPEnabled = v
 
-        if Value then
-            createESP()
-        else
-            clearESP()
+        ClearESP()
+
+        if v then
+
+            for _,plr in ipairs(Players:GetPlayers()) do
+                AddESP(plr)
+            end
         end
-    end,
+    end
 })
 
+Players.PlayerAdded:Connect(function(plr)
+
+    if ESPEnabled then
+        AddESP(plr)
+    end
+end)
+
 ---------------------------------------------------
--- CLONE AVATAR
+-- FULLBRIGHT
 ---------------------------------------------------
 
-FunTab:CreateButton({
-    Name = "Clone Avatar",
+VisualTab:CreateButton({
+    Name = "FullBright",
 
     Callback = function()
 
-        local character = getCharacter()
+        Lighting.Brightness = 5
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+    end
+})
 
-        if character and character.PrimaryPart then
+---------------------------------------------------
+-- FPS BOOST
+---------------------------------------------------
 
-            local clone = character:Clone()
+UtilityTab:CreateButton({
+    Name = "FPS Boost",
 
-            clone.Parent = workspace
+    Callback = function()
 
-            clone:SetPrimaryPartCFrame(
-                character.PrimaryPart.CFrame
-                * CFrame.new(5,0,0)
-            )
+        for _,v in ipairs(workspace:GetDescendants()) do
+
+            pcall(function()
+
+                if v:IsA("BasePart") then
+                    v.Material = Enum.Material.Plastic
+                    v.Reflectance = 0
+                end
+
+                if v:IsA("Texture")
+                or v:IsA("Decal") then
+
+                    v.Transparency = 1
+                end
+            end)
         end
-    end,
+
+        pcall(function()
+            setfpscap(30)
+        end)
+    end
 })
 
 ---------------------------------------------------
 -- ANTI AFK
 ---------------------------------------------------
 
-player.Idled:Connect(function()
+LocalPlayer.Idled:Connect(function()
 
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
 ---------------------------------------------------
--- FPS BOOST
+-- COPY JOB ID
 ---------------------------------------------------
 
-MiscTab:CreateButton({
-    Name = "FPS Boost",
+ServerTab:CreateButton({
+    Name = "Copy JobId",
 
     Callback = function()
 
-        for _,v in pairs(workspace:GetDescendants()) do
-
-            if v:IsA("BasePart") then
-                v.Material = Enum.Material.Plastic
-                v.Reflectance = 0
-            end
-
-            if v:IsA("Decal") then
-                v.Transparency = 1
-            end
+        if setclipboard then
+            setclipboard(game.JobId)
         end
-
-        settings().Rendering.QualityLevel =
-            Enum.QualityLevel.Level01
-    end,
+    end
 })
 
 ---------------------------------------------------
 -- REJOIN
 ---------------------------------------------------
 
-MiscTab:CreateButton({
-    Name = "Rejoin Server",
+ServerTab:CreateButton({
+    Name = "Rejoin",
 
     Callback = function()
 
         TeleportService:Teleport(
             game.PlaceId,
-            player
+            LocalPlayer
         )
-    end,
+    end
 })
 
 ---------------------------------------------------
--- RESET CHARACTER
+-- RESET
 ---------------------------------------------------
 
-MiscTab:CreateButton({
+ServerTab:CreateButton({
     Name = "Reset Character",
 
     Callback = function()
 
-        local humanoid = getHumanoid()
+        local hum = Humanoid()
 
-        if humanoid then
-            humanoid.Health = 0
+        if hum then
+            hum.Health = 0
         end
-    end,
+    end
 })
 
 ---------------------------------------------------
--- NOTIFICATION
+-- NOTIFY
 ---------------------------------------------------
 
 Rayfield:Notify({
     Title = "NDOT HUB",
-    Content = "Universal Script Loaded",
+    Content = "Loaded Successfully",
     Duration = 6,
-    Image = 4483362458,
+    Image = 4483362458
 })
