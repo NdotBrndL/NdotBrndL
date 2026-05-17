@@ -1,40 +1,437 @@
---// NDOT HUB SAFE UNIVERSAL V2 FIXED
---// Delta / Hydrogen / Codex Support
---// Android + PC Stable Edition
+--// NDOT HUB UNIVERSAL FIXED
+--// DELTA ANDROID + PC SUPPORT
+--// ORION UI VERSION
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
 ---------------------------------------------------
--- SAFE EXECUTOR CHECK
+-- LOAD ORION UI
 ---------------------------------------------------
 
-if not cloneref then
-    getgenv().cloneref = function(v)
-        return v
-    end
-end
-
----------------------------------------------------
--- LOAD RAYFIELD
----------------------------------------------------
-
-local Rayfield
-
-local success, result = pcall(function()
+local success, OrionLib = pcall(function()
     return loadstring(game:HttpGet(
-        "https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
+        "https://raw.githubusercontent.com/shlexware/Orion/main/source"
     ))()
 end)
 
-if success and result then
-    Rayfield = result
-else
-    warn("Failed load Rayfield UI")
+if not success or not OrionLib then
+    warn("Failed load Orion UI")
     return
 end
 
+---------------------------------------------------
+-- SERVICES
+---------------------------------------------------
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+
+local LocalPlayer = Players.LocalPlayer
+
+---------------------------------------------------
+-- SAFE FUNCTIONS
+---------------------------------------------------
+
+local function Character()
+    return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+end
+
+local function Humanoid()
+    local char = Character()
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function Root()
+    local char = Character()
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+---------------------------------------------------
+-- WINDOW
+---------------------------------------------------
+
+local Window = OrionLib:MakeWindow({
+
+    Name = "NDOT_BRNDL",
+    HidePremium = false,
+    SaveConfig = false,
+    IntroEnabled = false
+})
+
+---------------------------------------------------
+-- TABS
+---------------------------------------------------
+
+local PlayerTab = Window:MakeTab({
+    Name = "Player",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local VisualTab = Window:MakeTab({
+    Name = "Visual",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local UtilityTab = Window:MakeTab({
+    Name = "Utility",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local ServerTab = Window:MakeTab({
+    Name = "Server",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+---------------------------------------------------
+-- VALUES
+---------------------------------------------------
+
+local WalkSpeed = 16
+local JumpPower = 50
+local InfiniteJump = false
+local Noclip = false
+
+---------------------------------------------------
+-- WALKSPEED
+---------------------------------------------------
+
+PlayerTab:AddSlider({
+
+    Name = "WalkSpeed",
+    Min = 16,
+    Max = 120,
+    Default = 16,
+    Increment = 1,
+
+    Callback = function(v)
+
+        WalkSpeed = v
+
+        local hum = Humanoid()
+
+        if hum then
+            hum.WalkSpeed = v
+        end
+    end
+})
+
+---------------------------------------------------
+-- JUMPPOWER
+---------------------------------------------------
+
+PlayerTab:AddSlider({
+
+    Name = "JumpPower",
+    Min = 50,
+    Max = 150,
+    Default = 50,
+    Increment = 1,
+
+    Callback = function(v)
+
+        JumpPower = v
+
+        local hum = Humanoid()
+
+        if hum then
+            hum.JumpPower = v
+        end
+    end
+})
+
+---------------------------------------------------
+-- APPLY AFTER RESPAWN
+---------------------------------------------------
+
+LocalPlayer.CharacterAdded:Connect(function()
+
+    task.wait(1)
+
+    local hum = Humanoid()
+
+    if hum then
+        hum.WalkSpeed = WalkSpeed
+        hum.JumpPower = JumpPower
+    end
+end)
+
+---------------------------------------------------
+-- INFINITE JUMP
+---------------------------------------------------
+
+UIS.JumpRequest:Connect(function()
+
+    if InfiniteJump then
+
+        local hum = Humanoid()
+
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+PlayerTab:AddToggle({
+
+    Name = "Infinite Jump",
+    Default = false,
+
+    Callback = function(v)
+        InfiniteJump = v
+    end
+})
+
+---------------------------------------------------
+-- NOCLIP
+---------------------------------------------------
+
+RunService.Stepped:Connect(function()
+
+    if Noclip then
+
+        local char = Character()
+
+        for _,v in ipairs(char:GetDescendants()) do
+
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
+PlayerTab:AddToggle({
+
+    Name = "Noclip",
+    Default = false,
+
+    Callback = function(v)
+        Noclip = v
+    end
+})
+
+---------------------------------------------------
+-- ESP
+---------------------------------------------------
+
+local ESPEnabled = false
+local ESPStorage = {}
+
+local function ClearESP()
+
+    for _,v in pairs(ESPStorage) do
+
+        if v then
+            v:Destroy()
+        end
+    end
+
+    ESPStorage = {}
+end
+
+local function AddESP(plr)
+
+    if not ESPEnabled then return end
+    if plr == LocalPlayer then return end
+
+    local function Apply()
+
+        local char = plr.Character
+
+        if not char then return end
+
+        if char:FindFirstChild("NDOT_ESP") then
+            return
+        end
+
+        local h = Instance.new("Highlight")
+
+        h.Name = "NDOT_ESP"
+        h.FillTransparency = 0.5
+        h.OutlineTransparency = 0
+        h.Parent = char
+
+        table.insert(ESPStorage, h)
+    end
+
+    Apply()
+
+    plr.CharacterAdded:Connect(function()
+
+        task.wait(1)
+        Apply()
+    end)
+end
+
+VisualTab:AddToggle({
+
+    Name = "ESP Player",
+    Default = false,
+
+    Callback = function(v)
+
+        ESPEnabled = v
+
+        ClearESP()
+
+        if v then
+
+            for _,plr in ipairs(Players:GetPlayers()) do
+                AddESP(plr)
+            end
+        end
+    end
+})
+
+Players.PlayerAdded:Connect(function(plr)
+
+    if ESPEnabled then
+        AddESP(plr)
+    end
+end)
+
+---------------------------------------------------
+-- FULLBRIGHT
+---------------------------------------------------
+
+VisualTab:AddToggle({
+
+    Name = "FullBright",
+    Default = false,
+
+    Callback = function(v)
+
+        if v then
+
+            Lighting.Brightness = 5
+            Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = false
+
+        else
+
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 12
+            Lighting.FogEnd = 1000
+            Lighting.GlobalShadows = true
+        end
+    end
+})
+
+---------------------------------------------------
+-- FPS BOOST
+---------------------------------------------------
+
+UtilityTab:AddButton({
+
+    Name = "FPS Boost",
+
+    Callback = function()
+
+        for _,obj in ipairs(workspace:GetDescendants()) do
+
+            pcall(function()
+
+                if obj:IsA("BasePart") then
+                    obj.Material = Enum.Material.Plastic
+                    obj.Reflectance = 0
+                end
+
+                if obj:IsA("Texture")
+                or obj:IsA("Decal") then
+
+                    obj.Transparency = 1
+                end
+            end)
+        end
+
+        if typeof(setfpscap) == "function" then
+            pcall(function()
+                setfpscap(30)
+            end)
+        end
+    end
+})
+
+---------------------------------------------------
+-- ANTI AFK
+---------------------------------------------------
+
+LocalPlayer.Idled:Connect(function()
+
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+---------------------------------------------------
+-- SERVER
+---------------------------------------------------
+
+ServerTab:AddButton({
+
+    Name = "Copy JobId",
+
+    Callback = function()
+
+        if setclipboard then
+            setclipboard(game.JobId)
+        end
+    end
+})
+
+ServerTab:AddButton({
+
+    Name = "Rejoin",
+
+    Callback = function()
+
+        TeleportService:Teleport(
+            game.PlaceId,
+            LocalPlayer
+        )
+    end
+})
+
+ServerTab:AddButton({
+
+    Name = "Reset Character",
+
+    Callback = function()
+
+        local hum = Humanoid()
+
+        if hum then
+            hum.Health = 0
+        end
+    end
+})
+
+---------------------------------------------------
+-- NOTIFICATION
+---------------------------------------------------
+
+OrionLib:MakeNotification({
+
+    Name = "NDOT_BRNDL",
+    Content = "Loaded Successfully",
+    Time = 5
+})
+
+---------------------------------------------------
+-- INIT
+---------------------------------------------------
+
+OrionLib:Init()
 ---------------------------------------------------
 -- SERVICES
 ---------------------------------------------------
