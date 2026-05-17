@@ -1,16 +1,34 @@
---// NDOT HUB HYPEROS ULTIMATE
---// Android Optimized
---// HyperOS Safe Edition
---// Anti Lag + FPS Unlock + Anti Crash
+--// NDOT HUB SAFE UNIVERSAL V2
+--// Android + PC
+--// Delta / Hydrogen / Codex Support
+--// Stable Universal Edition
 
-local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet(
-        'https://raw.githubusercontent.com/shlexware/Rayfield/main/source'
-    ))()
-end)
+repeat task.wait() until game:IsLoaded()
 
-if not success then
-    warn("Rayfield gagal dimuat")
+---------------------------------------------------
+-- LOAD UI LIBRARY
+---------------------------------------------------
+
+local Rayfield
+
+local urls = {
+    "https://sirius.menu/rayfield",
+    "https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
+}
+
+for _,url in ipairs(urls) do
+
+    local ok = pcall(function()
+        Rayfield = loadstring(game:HttpGet(url))()
+    end)
+
+    if ok and Rayfield then
+        break
+    end
+end
+
+if not Rayfield then
+    warn("UI gagal dimuat")
     return
 end
 
@@ -19,20 +37,30 @@ end
 ---------------------------------------------------
 
 local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
+local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
-local UIS = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 
-local player = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
 ---------------------------------------------------
 -- SAFE FUNCTIONS
 ---------------------------------------------------
 
-local function SafeCall(func)
-    pcall(func)
+local function Character()
+    return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+end
+
+local function Humanoid()
+    local char = Character()
+    return char:FindFirstChildWhichIsA("Humanoid")
+end
+
+local function Root()
+    local char = Character()
+    return char:FindFirstChild("HumanoidRootPart")
 end
 
 ---------------------------------------------------
@@ -40,271 +68,379 @@ end
 ---------------------------------------------------
 
 local Window = Rayfield:CreateWindow({
-    Name = "NDOT HUB | HYPEROS",
+    Name = "NDOT HUB SAFE V2",
     LoadingTitle = "NDOT HUB",
-    LoadingSubtitle = "Android Ultimate Edition",
+    LoadingSubtitle = "Universal Stable Edition",
 
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = "NDOTHUB_ANDROID",
-        FileName = "MobileConfig"
+        FolderName = "NDOT_HUB",
+        FileName = "SAFE_CONFIG"
     },
 
     Discord = {
         Enabled = false
     },
 
-    KeySystem = false,
+    KeySystem = false
 })
 
 ---------------------------------------------------
 -- TABS
 ---------------------------------------------------
 
-local Main = Window:CreateTab("Main", 4483362458)
-local Mobile = Window:CreateTab("Android", 4483362458)
-local Misc = Window:CreateTab("Misc", 4483362458)
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+local VisualTab = Window:CreateTab("Visual", 4483362458)
+local UtilityTab = Window:CreateTab("Utility", 4483362458)
+local ServerTab = Window:CreateTab("Server", 4483362458)
 
 ---------------------------------------------------
--- TOUCH FRIENDLY GUI
+-- PLAYER VALUES
 ---------------------------------------------------
 
-Mobile:CreateButton({
-    Name = "Touch Friendly UI",
+local WalkSpeed = 16
+local JumpPower = 50
+local InfiniteJump = false
+local Noclip = false
+local Fly = false
 
-    Callback = function()
+---------------------------------------------------
+-- WALKSPEED
+---------------------------------------------------
 
-        SafeCall(function()
+PlayerTab:CreateSlider({
+    Name = "WalkSpeed",
+    Range = {16,120},
+    Increment = 1,
+    CurrentValue = 16,
 
-            for _,v in pairs(game.CoreGui:GetDescendants()) do
+    Callback = function(v)
 
-                if v:IsA("TextButton") then
-                    v.TextSize = 20
-                    v.Size = UDim2.new(
-                        v.Size.X.Scale,
-                        v.Size.X.Offset,
-                        v.Size.Y.Scale,
-                        45
-                    )
-                end
+        WalkSpeed = v
 
-                if v:IsA("TextLabel") then
-                    v.TextSize = 18
-                end
-            end
+        local hum = Humanoid()
 
-        end)
-
-        Rayfield:Notify({
-            Title = "NDOT HUB",
-            Content = "Touch UI aktif",
-            Duration = 5,
-            Image = 4483362458,
-        })
-    end,
+        if hum then
+            hum.WalkSpeed = v
+        end
+    end
 })
 
 ---------------------------------------------------
--- ANTI LAG MODE
+-- JUMPPOWER
 ---------------------------------------------------
 
-Mobile:CreateButton({
-    Name = "Anti Lag Mode",
+PlayerTab:CreateSlider({
+    Name = "JumpPower",
+    Range = {50,150},
+    Increment = 1,
+    CurrentValue = 50,
+
+    Callback = function(v)
+
+        JumpPower = v
+
+        local hum = Humanoid()
+
+        if hum then
+            hum.JumpPower = v
+        end
+    end
+})
+
+---------------------------------------------------
+-- APPLY AFTER RESPAWN
+---------------------------------------------------
+
+LocalPlayer.CharacterAdded:Connect(function()
+
+    task.wait(1)
+
+    local hum = Humanoid()
+
+    if hum then
+        hum.WalkSpeed = WalkSpeed
+        hum.JumpPower = JumpPower
+    end
+end)
+
+---------------------------------------------------
+-- INFINITE JUMP
+---------------------------------------------------
+
+UIS.JumpRequest:Connect(function()
+
+    if InfiniteJump then
+
+        local hum = Humanoid()
+
+        if hum then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+end)
+
+PlayerTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+
+    Callback = function(v)
+        InfiniteJump = v
+    end
+})
+
+---------------------------------------------------
+-- FLY
+---------------------------------------------------
+
+local FlyConnection
+
+PlayerTab:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
+
+    Callback = function(v)
+
+        Fly = v
+
+        if FlyConnection then
+            FlyConnection:Disconnect()
+            FlyConnection = nil
+        end
+
+        if Fly then
+
+            FlyConnection = RunService.RenderStepped:Connect(function()
+
+                local hrp = Root()
+
+                if hrp then
+                    hrp.Velocity = Vector3.new(0,35,0)
+                end
+            end)
+        end
+    end
+})
+
+---------------------------------------------------
+-- NOCLIP
+---------------------------------------------------
+
+RunService.Stepped:Connect(function()
+
+    if Noclip then
+
+        local char = Character()
+
+        for _,v in ipairs(char:GetDescendants()) do
+
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+end)
+
+PlayerTab:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+
+    Callback = function(v)
+        Noclip = v
+    end
+})
+
+---------------------------------------------------
+-- PLAYER ESP
+---------------------------------------------------
+
+local ESPEnabled = false
+local ESPStorage = {}
+
+local function ClearESP()
+
+    for _,v in pairs(ESPStorage) do
+
+        if v then
+            v:Destroy()
+        end
+    end
+
+    ESPStorage = {}
+end
+
+local function AddESP(plr)
+
+    if not ESPEnabled then return end
+    if plr == LocalPlayer then return end
+
+    local function Apply()
+
+        local char = plr.Character
+
+        if not char then return end
+
+        if char:FindFirstChild("NDOT_ESP") then
+            return
+        end
+
+        local h = Instance.new("Highlight")
+
+        h.Name = "NDOT_ESP"
+        h.FillTransparency = 0.5
+        h.OutlineTransparency = 0
+        h.Parent = char
+
+        table.insert(ESPStorage,h)
+    end
+
+    Apply()
+
+    plr.CharacterAdded:Connect(function()
+        task.wait(1)
+        Apply()
+    end)
+end
+
+VisualTab:CreateToggle({
+    Name = "ESP Player",
+    CurrentValue = false,
+
+    Callback = function(v)
+
+        ESPEnabled = v
+
+        ClearESP()
+
+        if v then
+
+            for _,plr in ipairs(Players:GetPlayers()) do
+                AddESP(plr)
+            end
+        end
+    end
+})
+
+Players.PlayerAdded:Connect(function(plr)
+
+    if ESPEnabled then
+        AddESP(plr)
+    end
+end)
+
+---------------------------------------------------
+-- FULLBRIGHT
+---------------------------------------------------
+
+VisualTab:CreateButton({
+    Name = "FullBright",
 
     Callback = function()
 
-        SafeCall(function()
+        Lighting.Brightness = 5
+        Lighting.ClockTime = 14
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+    end
+})
 
-            for _,v in pairs(workspace:GetDescendants()) do
+---------------------------------------------------
+-- FPS BOOST
+---------------------------------------------------
+
+UtilityTab:CreateButton({
+    Name = "FPS Boost",
+
+    Callback = function()
+
+        for _,v in ipairs(workspace:GetDescendants()) do
+
+            pcall(function()
 
                 if v:IsA("BasePart") then
                     v.Material = Enum.Material.Plastic
                     v.Reflectance = 0
                 end
 
-                if v:IsA("Texture") then
-                    v:Destroy()
-                end
+                if v:IsA("Texture")
+                or v:IsA("Decal") then
 
-                if v:IsA("Decal") then
                     v.Transparency = 1
                 end
-
-                if v:IsA("ParticleEmitter") then
-                    v.Enabled = false
-                end
-
-                if v:IsA("Trail") then
-                    v.Enabled = false
-                end
-            end
-
-            Lighting.GlobalShadows = false
-            Lighting.FogEnd = 999999
-            Lighting.Brightness = 1
-
-            settings().Rendering.QualityLevel =
-                Enum.QualityLevel.Level01
-
-        end)
-
-        Rayfield:Notify({
-            Title = "NDOT HUB",
-            Content = "Anti Lag aktif",
-            Duration = 5,
-            Image = 4483362458,
-        })
-    end,
-})
-
----------------------------------------------------
--- FPS UNLOCK
----------------------------------------------------
-
-Mobile:CreateButton({
-    Name = "FPS Unlock",
-
-    Callback = function()
-
-        SafeCall(function()
-
-            if setfpscap then
-                setfpscap(120)
-            end
-
-            settings().Rendering.QualityLevel =
-                Enum.QualityLevel.Level01
-
-        end)
-
-        Rayfield:Notify({
-            Title = "NDOT HUB",
-            Content = "FPS Unlock aktif",
-            Duration = 5,
-            Image = 4483362458,
-        })
-    end,
-})
-
----------------------------------------------------
--- ANTI CRASH EXECUTOR
----------------------------------------------------
-
-Mobile:CreateToggle({
-    Name = "Anti Crash",
-    CurrentValue = true,
-
-    Callback = function(Value)
-
-        if Value then
-
-            RunService.RenderStepped:Connect(function()
-
-                SafeCall(function()
-
-                    settings().Rendering.QualityLevel =
-                        Enum.QualityLevel.Level01
-
-                end)
             end)
         end
-    end,
-})
 
----------------------------------------------------
--- AUTO RECONNECT
----------------------------------------------------
-
-Misc:CreateToggle({
-    Name = "Auto Reconnect",
-    CurrentValue = true,
-
-    Callback = function(Value)
-
-        if Value then
-
-            game.CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
-
-                if child.Name == "ErrorPrompt" then
-
-                    SafeCall(function()
-
-                        TeleportService:Teleport(
-                            game.PlaceId,
-                            player
-                        )
-
-                    end)
-                end
-            end)
-        end
-    end,
+        pcall(function()
+            setfpscap(30)
+        end)
+    end
 })
 
 ---------------------------------------------------
 -- ANTI AFK
 ---------------------------------------------------
 
-Misc:CreateToggle({
-    Name = "Anti AFK",
-    CurrentValue = true,
+LocalPlayer.Idled:Connect(function()
 
-    Callback = function(Value)
-
-        if Value then
-
-            player.Idled:Connect(function()
-
-                SafeCall(function()
-
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton2(Vector2.new())
-
-                end)
-            end)
-        end
-    end,
-})
-
----------------------------------------------------
--- SAVE CONFIG ANDROID
----------------------------------------------------
-
-Misc:CreateButton({
-    Name = "Save Config",
-
-    Callback = function()
-
-        Rayfield:Notify({
-            Title = "NDOT HUB",
-            Content = "Config Android tersimpan",
-            Duration = 5,
-            Image = 4483362458,
-        })
-    end,
-})
-
----------------------------------------------------
--- LOW GRAPHIC LOOP
----------------------------------------------------
-
-RunService.RenderStepped:Connect(function()
-
-    SafeCall(function()
-
-        settings().Rendering.QualityLevel =
-            Enum.QualityLevel.Level01
-
-    end)
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
 
 ---------------------------------------------------
--- NOTIFICATION
+-- COPY JOB ID
+---------------------------------------------------
+
+ServerTab:CreateButton({
+    Name = "Copy JobId",
+
+    Callback = function()
+
+        if setclipboard then
+            setclipboard(game.JobId)
+        end
+    end
+})
+
+---------------------------------------------------
+-- REJOIN
+---------------------------------------------------
+
+ServerTab:CreateButton({
+    Name = "Rejoin",
+
+    Callback = function()
+
+        TeleportService:Teleport(
+            game.PlaceId,
+            LocalPlayer
+        )
+    end
+})
+
+---------------------------------------------------
+-- RESET
+---------------------------------------------------
+
+ServerTab:CreateButton({
+    Name = "Reset Character",
+
+    Callback = function()
+
+        local hum = Humanoid()
+
+        if hum then
+            hum.Health = 0
+        end
+    end
+})
+
+---------------------------------------------------
+-- NOTIFY
 ---------------------------------------------------
 
 Rayfield:Notify({
     Title = "NDOT HUB",
-    Content = "HyperOS Ultimate Loaded",
+    Content = "Loaded Successfully",
     Duration = 6,
-    Image = 4483362458,
+    Image = 4483362458
 })
