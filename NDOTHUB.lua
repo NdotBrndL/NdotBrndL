@@ -68,8 +68,9 @@ end
 ---------------------------------------------------
 
 local Window = Rayfield:CreateWindow({
-    Name = "NDOT HUB SAFE V2",
-    LoadingTitle = "NDOT HUB",
+
+    Name = "NDOT_BRNDL",
+    LoadingTitle = "NDOT_BRNDL",
     LoadingSubtitle = "Universal Stable Edition",
 
     ConfigurationSaving = {
@@ -93,6 +94,7 @@ local PlayerTab = Window:CreateTab("Player", 4483362458)
 local VisualTab = Window:CreateTab("Visual", 4483362458)
 local UtilityTab = Window:CreateTab("Utility", 4483362458)
 local ServerTab = Window:CreateTab("Server", 4483362458)
+local AvatarTab = Window:CreateTab("Avatar", 4483362458)
 
 ---------------------------------------------------
 -- PLAYER VALUES
@@ -109,6 +111,7 @@ local Fly = false
 ---------------------------------------------------
 
 PlayerTab:CreateSlider({
+
     Name = "WalkSpeed",
     Range = {16,120},
     Increment = 1,
@@ -131,6 +134,7 @@ PlayerTab:CreateSlider({
 ---------------------------------------------------
 
 PlayerTab:CreateSlider({
+
     Name = "JumpPower",
     Range = {50,150},
     Increment = 1,
@@ -181,6 +185,7 @@ UIS.JumpRequest:Connect(function()
 end)
 
 PlayerTab:CreateToggle({
+
     Name = "Infinite Jump",
     CurrentValue = false,
 
@@ -190,12 +195,30 @@ PlayerTab:CreateToggle({
 })
 
 ---------------------------------------------------
--- FLY
+-- FLY CONTROL SYSTEM
 ---------------------------------------------------
 
+local FlySpeed = 60
+
+local BV
+local BG
 local FlyConnection
 
+PlayerTab:CreateSlider({
+
+    Name = "Fly Speed",
+    Range = {20,150},
+    Increment = 5,
+    CurrentValue = 60,
+
+    Callback = function(v)
+
+        FlySpeed = v
+    end
+})
+
 PlayerTab:CreateToggle({
+
     Name = "Fly",
     CurrentValue = false,
 
@@ -203,22 +226,73 @@ PlayerTab:CreateToggle({
 
         Fly = v
 
-        if FlyConnection then
-            FlyConnection:Disconnect()
-            FlyConnection = nil
+        local hrp = Root()
+
+        if not hrp then return end
+
+        if not Fly then
+
+            if FlyConnection then
+                FlyConnection:Disconnect()
+                FlyConnection = nil
+            end
+
+            if BV then
+                BV:Destroy()
+                BV = nil
+            end
+
+            if BG then
+                BG:Destroy()
+                BG = nil
+            end
+
+            return
         end
 
-        if Fly then
+        BV = Instance.new("BodyVelocity")
 
-            FlyConnection = RunService.RenderStepped:Connect(function()
+        BV.MaxForce = Vector3.new(
+            math.huge,
+            math.huge,
+            math.huge
+        )
 
-                local hrp = Root()
+        BV.Velocity = Vector3.zero
+        BV.Parent = hrp
 
-                if hrp then
-                    hrp.Velocity = Vector3.new(0,35,0)
-                end
-            end)
-        end
+        BG = Instance.new("BodyGyro")
+
+        BG.MaxTorque = Vector3.new(
+            math.huge,
+            math.huge,
+            math.huge
+        )
+
+        BG.P = 10000
+        BG.CFrame = workspace.CurrentCamera.CFrame
+        BG.Parent = hrp
+
+        FlyConnection =
+            RunService.RenderStepped:Connect(function()
+
+            if not Fly then return end
+
+            local hum = Humanoid()
+
+            if not hum then return end
+
+            local cam = workspace.CurrentCamera
+            local move = hum.MoveDirection
+
+            local direction =
+                (cam.CFrame.RightVector * move.X)
+                + (cam.CFrame.LookVector * move.Z)
+
+            BV.Velocity = direction * FlySpeed
+
+            BG.CFrame = cam.CFrame
+        end)
     end
 })
 
@@ -242,6 +316,7 @@ RunService.Stepped:Connect(function()
 end)
 
 PlayerTab:CreateToggle({
+
     Name = "Noclip",
     CurrentValue = false,
 
@@ -297,12 +372,14 @@ local function AddESP(plr)
     Apply()
 
     plr.CharacterAdded:Connect(function()
+
         task.wait(1)
         Apply()
     end)
 end
 
 VisualTab:CreateToggle({
+
     Name = "ESP Player",
     CurrentValue = false,
 
@@ -326,21 +403,33 @@ Players.PlayerAdded:Connect(function(plr)
     if ESPEnabled then
         AddESP(plr)
     end
-end)
+})
 
 ---------------------------------------------------
 -- FULLBRIGHT
 ---------------------------------------------------
 
-VisualTab:CreateButton({
+VisualTab:CreateToggle({
+
     Name = "FullBright",
+    CurrentValue = false,
 
-    Callback = function()
+    Callback = function(v)
 
-        Lighting.Brightness = 5
-        Lighting.ClockTime = 14
-        Lighting.FogEnd = 100000
-        Lighting.GlobalShadows = false
+        if v then
+
+            Lighting.Brightness = 5
+            Lighting.ClockTime = 14
+            Lighting.FogEnd = 100000
+            Lighting.GlobalShadows = false
+
+        else
+
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 12
+            Lighting.FogEnd = 1000
+            Lighting.GlobalShadows = true
+        end
     end
 })
 
@@ -348,31 +437,40 @@ VisualTab:CreateButton({
 -- FPS BOOST
 ---------------------------------------------------
 
-UtilityTab:CreateButton({
+UtilityTab:CreateToggle({
+
     Name = "FPS Boost",
+    CurrentValue = false,
 
-    Callback = function()
+    Callback = function(v)
 
-        for _,v in ipairs(workspace:GetDescendants()) do
+        if v then
 
-            pcall(function()
+            for _,obj in ipairs(workspace:GetDescendants()) do
 
-                if v:IsA("BasePart") then
-                    v.Material = Enum.Material.Plastic
-                    v.Reflectance = 0
-                end
+                pcall(function()
 
-                if v:IsA("Texture")
-                or v:IsA("Decal") then
+                    if obj:IsA("BasePart") then
+                        obj.Material = Enum.Material.Plastic
+                        obj.Reflectance = 0
+                    end
 
-                    v.Transparency = 1
-                end
-            end)
+                    if obj:IsA("Texture")
+                    or obj:IsA("Decal") then
+
+                        obj.Transparency = 1
+                    end
+                end)
+            end
+
+            if setfpscap then
+                setfpscap(30)
+            end
+
+        else
+
+            warn("Rejoin game untuk restore graphics")
         end
-
-        pcall(function()
-            setfpscap(30)
-        end)
     end
 })
 
@@ -387,10 +485,130 @@ LocalPlayer.Idled:Connect(function()
 end)
 
 ---------------------------------------------------
+-- AVATAR COPIER
+---------------------------------------------------
+
+local AvatarLoop = false
+local SelectedPlayer = nil
+
+local PlayerList = {}
+
+local function RefreshPlayers()
+
+    PlayerList = {}
+
+    for _,plr in ipairs(Players:GetPlayers()) do
+
+        if plr ~= LocalPlayer then
+            table.insert(PlayerList, plr.Name)
+        end
+    end
+end
+
+RefreshPlayers()
+
+Players.PlayerAdded:Connect(RefreshPlayers)
+Players.PlayerRemoving:Connect(RefreshPlayers)
+
+task.spawn(function()
+
+    while task.wait(5) do
+
+        pcall(function()
+            RefreshPlayers()
+        end)
+    end
+end)
+
+AvatarTab:CreateDropdown({
+
+    Name = "Select Player",
+    Options = PlayerList,
+    CurrentOption = nil,
+
+    Callback = function(v)
+
+        SelectedPlayer = Players:FindFirstChild(v)
+    end
+})
+
+local function CopyAvatar(target)
+
+    if not target then return end
+    if not target.Character then return end
+
+    local myChar = Character()
+    local targetChar = target.Character
+
+    for _,v in ipairs(myChar:GetChildren()) do
+
+        if v:IsA("Shirt")
+        or v:IsA("Pants")
+        or v:IsA("Accessory") then
+
+            v:Destroy()
+        end
+    end
+
+    for _,v in ipairs(targetChar:GetChildren()) do
+
+        if v:IsA("Shirt")
+        or v:IsA("Pants")
+        or v:IsA("Accessory") then
+
+            local clone = v:Clone()
+            clone.Parent = myChar
+        end
+    end
+end
+
+AvatarTab:CreateButton({
+
+    Name = "Copy Once",
+
+    Callback = function()
+
+        if SelectedPlayer then
+            CopyAvatar(SelectedPlayer)
+        end
+    end
+})
+
+AvatarTab:CreateToggle({
+
+    Name = "Realtime Avatar Copy",
+    CurrentValue = false,
+
+    Callback = function(v)
+
+        AvatarLoop = v
+
+        if AvatarLoop then
+
+            task.spawn(function()
+
+                while AvatarLoop do
+
+                    pcall(function()
+
+                        if SelectedPlayer then
+                            CopyAvatar(SelectedPlayer)
+                        end
+                    end)
+
+                    task.wait(2)
+                end
+            end)
+        end
+    end
+})
+
+---------------------------------------------------
 -- COPY JOB ID
 ---------------------------------------------------
 
 ServerTab:CreateButton({
+
     Name = "Copy JobId",
 
     Callback = function()
@@ -406,6 +624,7 @@ ServerTab:CreateButton({
 ---------------------------------------------------
 
 ServerTab:CreateButton({
+
     Name = "Rejoin",
 
     Callback = function()
@@ -422,6 +641,7 @@ ServerTab:CreateButton({
 ---------------------------------------------------
 
 ServerTab:CreateButton({
+
     Name = "Reset Character",
 
     Callback = function()
@@ -439,7 +659,8 @@ ServerTab:CreateButton({
 ---------------------------------------------------
 
 Rayfield:Notify({
-    Title = "NDOT HUB",
+
+    Title = "NDOT_BRNDL",
     Content = "Loaded Successfully",
     Duration = 6,
     Image = 4483362458
