@@ -190,12 +190,30 @@ PlayerTab:CreateToggle({
 })
 
 ---------------------------------------------------
--- FLY
+-- FLY CONTROL SYSTEM
 ---------------------------------------------------
 
+local FlySpeed = 60
+
+local BV
+local BG
 local FlyConnection
 
+PlayerTab:CreateSlider({
+
+    Name = "Fly Speed",
+    Range = {20,150},
+    Increment = 5,
+    CurrentValue = 60,
+
+    Callback = function(v)
+
+        FlySpeed = v
+    end
+})
+
 PlayerTab:CreateToggle({
+
     Name = "Fly",
     CurrentValue = false,
 
@@ -203,22 +221,73 @@ PlayerTab:CreateToggle({
 
         Fly = v
 
-        if FlyConnection then
-            FlyConnection:Disconnect()
-            FlyConnection = nil
+        local hrp = Root()
+
+        if not hrp then return end
+
+        if not Fly then
+
+            if FlyConnection then
+                FlyConnection:Disconnect()
+                FlyConnection = nil
+            end
+
+            if BV then
+                BV:Destroy()
+                BV = nil
+            end
+
+            if BG then
+                BG:Destroy()
+                BG = nil
+            end
+
+            return
         end
 
-        if Fly then
+        BV = Instance.new("BodyVelocity")
 
-            FlyConnection = RunService.RenderStepped:Connect(function()
+        BV.MaxForce = Vector3.new(
+            math.huge,
+            math.huge,
+            math.huge
+        )
 
-                local hrp = Root()
+        BV.Velocity = Vector3.zero
+        BV.Parent = hrp
 
-                if hrp then
-                    hrp.Velocity = Vector3.new(0,35,0)
-                end
-            end)
-        end
+        BG = Instance.new("BodyGyro")
+
+        BG.MaxTorque = Vector3.new(
+            math.huge,
+            math.huge,
+            math.huge
+        )
+
+        BG.P = 10000
+        BG.CFrame = workspace.CurrentCamera.CFrame
+        BG.Parent = hrp
+
+        FlyConnection =
+            RunService.RenderStepped:Connect(function()
+
+            if not Fly then return end
+
+            local hum = Humanoid()
+
+            if not hum then return end
+
+            local cam = workspace.CurrentCamera
+            local move = hum.MoveDirection
+
+            local direction =
+                (cam.CFrame.RightVector * move.X)
+                + (cam.CFrame.LookVector * move.Z)
+
+            BV.Velocity = direction * FlySpeed
+
+            BG.CFrame = cam.CFrame
+        end)
     end
 })
 
