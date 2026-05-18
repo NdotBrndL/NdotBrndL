@@ -1,34 +1,36 @@
---// NDOT HUB SAFE UNIVERSAL V2
+--// NDOT HUB SAFE UNIVERSAL V3
 --// Android + PC
---// Delta / Hydrogen / Codex Support
---// Stable Universal Edition
+--// Delta / Hydrogen / Codex / Fluxus
+--// Optimized Stable Edition
 
 repeat task.wait() until game:IsLoaded()
 
 ---------------------------------------------------
--- LOAD UI LIBRARY
+-- SAFE LOAD RAYFIELD
 ---------------------------------------------------
 
 local Rayfield
+local Success = false
 
-local urls = {
+local Sources = {
     "https://sirius.menu/rayfield",
     "https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
 }
 
-for _,url in ipairs(urls) do
-
-    local ok = pcall(function()
-        Rayfield = loadstring(game:HttpGet(url))()
+for _,url in ipairs(Sources) do
+    local ok,lib = pcall(function()
+        return loadstring(game:HttpGet(url))()
     end)
 
-    if ok and Rayfield then
+    if ok and lib then
+        Rayfield = lib
+        Success = true
         break
     end
 end
 
-if not Rayfield then
-    warn("UI gagal dimuat")
+if not Success then
+    warn("Rayfield gagal dimuat")
     return
 end
 
@@ -39,38 +41,53 @@ end
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TeleportService = game:GetService("TeleportService")
 local Lighting = game:GetService("Lighting")
+local TeleportService = game:GetService("TeleportService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local LocalPlayer = Players.LocalPlayer
 
 ---------------------------------------------------
--- SAFE FUNCTIONS
+-- CHARACTER FUNCTIONS
 ---------------------------------------------------
 
-local function Character()
+local function GetCharacter()
     return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 end
 
-local function Humanoid()
-    local char = Character()
-    return char:FindFirstChildWhichIsA("Humanoid")
+local function GetHumanoid()
+    local Char = GetCharacter()
+    return Char:FindFirstChildOfClass("Humanoid")
 end
 
-local function Root()
-    local char = Character()
-    return char:FindFirstChild("HumanoidRootPart")
+local function GetRoot()
+    local Char = GetCharacter()
+    return Char:FindFirstChild("HumanoidRootPart")
 end
+
+---------------------------------------------------
+-- VALUES
+---------------------------------------------------
+
+local WalkSpeed = 16
+local JumpPower = 50
+local FlySpeed = 60
+
+local InfiniteJump = false
+local Noclip = false
+local Fly = false
+local ESPEnabled = false
+
+local JumpPowerEnabled = false
 
 ---------------------------------------------------
 -- WINDOW
 ---------------------------------------------------
 
 local Window = Rayfield:CreateWindow({
-    Name = "NDOT HUB SAFE V2",
+    Name = "NDOT HUB SAFE V3",
     LoadingTitle = "NDOT HUB",
-    LoadingSubtitle = "Universal Stable Edition",
+    LoadingSubtitle = "Universal Edition",
 
     ConfigurationSaving = {
         Enabled = true,
@@ -95,14 +112,33 @@ local UtilityTab = Window:CreateTab("Utility", 4483362458)
 local ServerTab = Window:CreateTab("Server", 4483362458)
 
 ---------------------------------------------------
--- PLAYER VALUES
+-- APPLY PLAYER STATS
 ---------------------------------------------------
 
-local WalkSpeed = 16
-local JumpPower = 50
-local InfiniteJump = false
-local Noclip = false
-local Fly = false
+local function ApplyStats()
+
+    local Hum = GetHumanoid()
+
+    if Hum then
+
+        Hum.WalkSpeed = WalkSpeed
+        Hum.UseJumpPower = true
+
+        if JumpPowerEnabled then
+            Hum.JumpPower = JumpPower
+        else
+            Hum.JumpPower = 50
+        end
+    end
+end
+---------------------------------------------------
+-- RESPAWN FIX
+---------------------------------------------------
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    ApplyStats()
+end)
 
 ---------------------------------------------------
 -- WALKSPEED
@@ -110,19 +146,13 @@ local Fly = false
 
 PlayerTab:CreateSlider({
     Name = "WalkSpeed",
-    Range = {16,120},
+    Range = {16,150},
     Increment = 1,
     CurrentValue = 16,
 
     Callback = function(v)
-
         WalkSpeed = v
-
-        local hum = Humanoid()
-
-        if hum then
-            hum.WalkSpeed = v
-        end
+        ApplyStats()
     end
 })
 
@@ -130,52 +160,43 @@ PlayerTab:CreateSlider({
 -- JUMPPOWER
 ---------------------------------------------------
 
+PlayerTab:CreateToggle({
+    Name = "Enable JumpPower",
+    CurrentValue = false,
+
+    Callback = function(v)
+
+        JumpPowerEnabled = v
+        ApplyStats()
+    end
+})
+
 PlayerTab:CreateSlider({
     Name = "JumpPower",
-    Range = {50,150},
-    Increment = 1,
+    Range = {50,250},
+    Increment = 5,
     CurrentValue = 50,
 
     Callback = function(v)
 
         JumpPower = v
 
-        local hum = Humanoid()
-
-        if hum then
-            hum.JumpPower = v
+        if JumpPowerEnabled then
+            ApplyStats()
         end
     end
 })
-
----------------------------------------------------
--- APPLY AFTER RESPAWN
----------------------------------------------------
-
-LocalPlayer.CharacterAdded:Connect(function()
-
-    task.wait(1)
-
-    local hum = Humanoid()
-
-    if hum then
-        hum.WalkSpeed = WalkSpeed
-        hum.JumpPower = JumpPower
-    end
-end)
 
 ---------------------------------------------------
 -- INFINITE JUMP
 ---------------------------------------------------
 
 UIS.JumpRequest:Connect(function()
-
     if InfiniteJump then
+        local Hum = GetHumanoid()
 
-        local hum = Humanoid()
-
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        if Hum then
+            Hum:ChangeState(Enum.HumanoidStateType.Jumping)
         end
     end
 end)
@@ -190,30 +211,45 @@ PlayerTab:CreateToggle({
 })
 
 ---------------------------------------------------
--- FLY CONTROL SYSTEM
+-- FLY SYSTEM
 ---------------------------------------------------
 
-local FlySpeed = 60
-
-local BV
-local BG
 local FlyConnection
+local BodyVelocity
+local BodyGyro
+
+local function StopFly()
+
+    Fly = false
+
+    if FlyConnection then
+        FlyConnection:Disconnect()
+        FlyConnection = nil
+    end
+
+    if BodyVelocity then
+        BodyVelocity:Destroy()
+        BodyVelocity = nil
+    end
+
+    if BodyGyro then
+        BodyGyro:Destroy()
+        BodyGyro = nil
+    end
+end
 
 PlayerTab:CreateSlider({
-
     Name = "Fly Speed",
-    Range = {20,150},
+    Range = {20,200},
     Increment = 5,
     CurrentValue = 60,
 
     Callback = function(v)
-
         FlySpeed = v
     end
 })
 
 PlayerTab:CreateToggle({
-
     Name = "Fly",
     CurrentValue = false,
 
@@ -221,72 +257,46 @@ PlayerTab:CreateToggle({
 
         Fly = v
 
-        local hrp = Root()
-
-        if not hrp then return end
-
-        if not Fly then
-
-            if FlyConnection then
-                FlyConnection:Disconnect()
-                FlyConnection = nil
-            end
-
-            if BV then
-                BV:Destroy()
-                BV = nil
-            end
-
-            if BG then
-                BG:Destroy()
-                BG = nil
-            end
-
+        if not v then
+            StopFly()
             return
         end
 
-        BV = Instance.new("BodyVelocity")
+        local Root = GetRoot()
 
-        BV.MaxForce = Vector3.new(
-            math.huge,
-            math.huge,
-            math.huge
-        )
+        if not Root then return end
 
-        BV.Velocity = Vector3.zero
-        BV.Parent = hrp
+        BodyVelocity = Instance.new("BodyVelocity")
+        BodyVelocity.MaxForce = Vector3.new(math.huge,math.huge,math.huge)
+        BodyVelocity.Velocity = Vector3.zero
+        BodyVelocity.Parent = Root
 
-        BG = Instance.new("BodyGyro")
+        BodyGyro = Instance.new("BodyGyro")
+        BodyGyro.MaxTorque = Vector3.new(math.huge,math.huge,math.huge)
+        BodyGyro.P = 10000
+        BodyGyro.CFrame = workspace.CurrentCamera.CFrame
+        BodyGyro.Parent = Root
 
-        BG.MaxTorque = Vector3.new(
-            math.huge,
-            math.huge,
-            math.huge
-        )
-
-        BG.P = 10000
-        BG.CFrame = workspace.CurrentCamera.CFrame
-        BG.Parent = hrp
-
-        FlyConnection =
-            RunService.RenderStepped:Connect(function()
+        FlyConnection = RunService.RenderStepped:Connect(function()
 
             if not Fly then return end
 
-            local hum = Humanoid()
+            local Hum = GetHumanoid()
+            local Cam = workspace.CurrentCamera
 
-            if not hum then return end
+            if not Hum or not Root then
+                StopFly()
+                return
+            end
 
-            local cam = workspace.CurrentCamera
-            local move = hum.MoveDirection
+            local MoveDirection = Hum.MoveDirection
 
-            local direction =
-                (cam.CFrame.RightVector * move.X)
-                + (cam.CFrame.LookVector * move.Z)
+            BodyVelocity.Velocity =
+                ((Cam.CFrame.LookVector * MoveDirection.Z)
+                + (Cam.CFrame.RightVector * MoveDirection.X))
+                * FlySpeed
 
-            BV.Velocity = direction * FlySpeed
-
-            BG.CFrame = cam.CFrame
+            BodyGyro.CFrame = Cam.CFrame
         end)
     end
 })
@@ -299,12 +309,12 @@ RunService.Stepped:Connect(function()
 
     if Noclip then
 
-        local char = Character()
+        local Char = GetCharacter()
 
-        for _,v in ipairs(char:GetDescendants()) do
+        for _,Part in ipairs(Char:GetDescendants()) do
 
-            if v:IsA("BasePart") then
-                v.CanCollide = false
+            if Part:IsA("BasePart") then
+                Part.CanCollide = false
             end
         end
     end
@@ -320,54 +330,37 @@ PlayerTab:CreateToggle({
 })
 
 ---------------------------------------------------
--- PLAYER ESP
+-- ESP
 ---------------------------------------------------
 
-local ESPEnabled = false
-local ESPStorage = {}
+local function CreateESP(Player)
 
-local function ClearESP()
+    if Player == LocalPlayer then return end
 
-    for _,v in pairs(ESPStorage) do
+    local function Add()
 
-        if v then
-            v:Destroy()
-        end
-    end
+        if not ESPEnabled then return end
 
-    ESPStorage = {}
-end
+        local Char = Player.Character
+        if not Char then return end
 
-local function AddESP(plr)
-
-    if not ESPEnabled then return end
-    if plr == LocalPlayer then return end
-
-    local function Apply()
-
-        local char = plr.Character
-
-        if not char then return end
-
-        if char:FindFirstChild("NDOT_ESP") then
+        if Char:FindFirstChild("NDOT_ESP") then
             return
         end
 
-        local h = Instance.new("Highlight")
-
-        h.Name = "NDOT_ESP"
-        h.FillTransparency = 0.5
-        h.OutlineTransparency = 0
-        h.Parent = char
-
-        table.insert(ESPStorage,h)
+        local Highlight = Instance.new("Highlight")
+        Highlight.Name = "NDOT_ESP"
+        Highlight.FillTransparency = 0.5
+        Highlight.OutlineTransparency = 0
+        Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        Highlight.Parent = Char
     end
 
-    Apply()
+    Add()
 
-    plr.CharacterAdded:Connect(function()
+    Player.CharacterAdded:Connect(function()
         task.wait(1)
-        Apply()
+        Add()
     end)
 end
 
@@ -379,23 +372,22 @@ VisualTab:CreateToggle({
 
         ESPEnabled = v
 
-        ClearESP()
+        for _,Plr in ipairs(Players:GetPlayers()) do
+
+            if Plr.Character and Plr.Character:FindFirstChild("NDOT_ESP") then
+                Plr.Character.NDOT_ESP:Destroy()
+            end
+        end
 
         if v then
-
-            for _,plr in ipairs(Players:GetPlayers()) do
-                AddESP(plr)
+            for _,Plr in ipairs(Players:GetPlayers()) do
+                CreateESP(Plr)
             end
         end
     end
 })
 
-Players.PlayerAdded:Connect(function(plr)
-
-    if ESPEnabled then
-        AddESP(plr)
-    end
-end)
+Players.PlayerAdded:Connect(CreateESP)
 
 ---------------------------------------------------
 -- FULLBRIGHT
@@ -406,10 +398,11 @@ VisualTab:CreateButton({
 
     Callback = function()
 
-        Lighting.Brightness = 5
+        Lighting.Brightness = 3
         Lighting.ClockTime = 14
         Lighting.FogEnd = 100000
         Lighting.GlobalShadows = false
+        Lighting.OutdoorAmbient = Color3.fromRGB(128,128,128)
     end
 })
 
@@ -431,16 +424,22 @@ UtilityTab:CreateButton({
                     v.Reflectance = 0
                 end
 
-                if v:IsA("Texture")
-                or v:IsA("Decal") then
-
+                if v:IsA("Decal")
+                or v:IsA("Texture") then
                     v.Transparency = 1
+                end
+
+                if v:IsA("ParticleEmitter")
+                or v:IsA("Trail") then
+                    v.Enabled = false
                 end
             end)
         end
 
         pcall(function()
-            setfpscap(30)
+            if setfpscap then
+                setfpscap(30)
+            end
         end)
     end
 })
@@ -456,7 +455,7 @@ LocalPlayer.Idled:Connect(function()
 end)
 
 ---------------------------------------------------
--- COPY JOB ID
+-- COPY JOBID
 ---------------------------------------------------
 
 ServerTab:CreateButton({
@@ -466,6 +465,12 @@ ServerTab:CreateButton({
 
         if setclipboard then
             setclipboard(game.JobId)
+
+            Rayfield:Notify({
+                Title = "Copied",
+                Content = "JobId copied",
+                Duration = 3
+            })
         end
     end
 })
@@ -479,8 +484,9 @@ ServerTab:CreateButton({
 
     Callback = function()
 
-        TeleportService:Teleport(
+        TeleportService:TeleportToPlaceInstance(
             game.PlaceId,
+            game.JobId,
             LocalPlayer
         )
     end
@@ -495,21 +501,21 @@ ServerTab:CreateButton({
 
     Callback = function()
 
-        local hum = Humanoid()
+        local Hum = GetHumanoid()
 
-        if hum then
-            hum.Health = 0
+        if Hum then
+            Hum.Health = 0
         end
     end
 })
 
 ---------------------------------------------------
--- NOTIFY
+-- NOTIFICATION
 ---------------------------------------------------
 
 Rayfield:Notify({
     Title = "NDOT HUB",
     Content = "Loaded Successfully",
-    Duration = 6,
+    Duration = 5,
     Image = 4483362458
 })
