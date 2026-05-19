@@ -1,40 +1,144 @@
---[[
- ███╗   ██╗██████╗  ██████╗ ████████╗
- ████╗  ██║██╔══██╗██╔═══██╗╚══██╔══╝
- ██╔██╗ ██║██║  ██║██║   ██║   ██║
- ██║╚██╗██║██║  ██║██║   ██║   ██║
- ██║ ╚████║██████╔╝╚██████╔╝   ██║
- ╚═╝  ╚═══╝╚═════╝  ╚═════╝    ╚═╝
-
-        NDOT_BRNDL ADMIN HUB
-        Delta / Hydrogen / Fluxus
-        Mobile + PC Support
-]]
+--// NDOT_BRNDL SIMPLE HUB
+--// Delta / Hydrogen / Fluxus Support
 
 repeat task.wait() until game:IsLoaded()
 
----------------------------------------------------
--- SERVICES
----------------------------------------------------
-
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local TeleportService = game:GetService("TeleportService")
-local StarterGui = game:GetService("StarterGui")
-
-local LP = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
 
 ---------------------------------------------------
--- SAFE CHARACTER
+-- SETTINGS
 ---------------------------------------------------
 
-local function Char()
-    return LP.Character or LP.CharacterAdded:Wait()
+local JumpEnabled = false
+local AntiAFKEnabled = false
+local GodModeEnabled = false
+
+local NormalJump = Humanoid.JumpPower
+
+---------------------------------------------------
+-- RELOAD CHARACTER
+---------------------------------------------------
+
+local function RefreshCharacter()
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Humanoid = Character:WaitForChild("Humanoid")
 end
 
-local function HRP()
-    return Char():WaitForChild("HumanoidRootPart")
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    RefreshCharacter()
+end)
+
+---------------------------------------------------
+-- ANTI AFK
+---------------------------------------------------
+
+LocalPlayer.Idled:Connect(function()
+    if AntiAFKEnabled then
+        local VirtualUser = game:GetService("VirtualUser")
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end
+end)
+
+---------------------------------------------------
+-- UI
+---------------------------------------------------
+
+local Library = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+local Window = Library:CreateWindow({
+    Name = "NDOT_BRNDL HUB",
+    LoadingTitle = "NDOT_BRNDL",
+    LoadingSubtitle = "Universal Script",
+    ConfigurationSaving = {
+        Enabled = false
+    }
+})
+
+local Main = Window:CreateTab("Main", 4483362458)
+
+---------------------------------------------------
+-- JUMP POWER
+---------------------------------------------------
+
+Main:CreateToggle({
+    Name = "Jump Power",
+    CurrentValue = false,
+    Flag = "JumpToggle",
+    Callback = function(Value)
+        JumpEnabled = Value
+
+        if Value then
+            Humanoid.UseJumpPower = true
+            Humanoid.JumpPower = 120
+        else
+            Humanoid.JumpPower = NormalJump
+        end
+    end
+})
+
+---------------------------------------------------
+-- ANTI AFK
+---------------------------------------------------
+
+Main:CreateToggle({
+    Name = "Anti AFK",
+    CurrentValue = false,
+    Flag = "AFKToggle",
+    Callback = function(Value)
+        AntiAFKEnabled = Value
+    end
+})
+
+---------------------------------------------------
+-- GOD MODE
+---------------------------------------------------
+
+Main:CreateToggle({
+    Name = "God Mode",
+    CurrentValue = false,
+    Flag = "GodToggle",
+    Callback = function(Value)
+        GodModeEnabled = Value
+
+        if Value then
+            if Character:FindFirstChild("Humanoid") then
+                Humanoid.Name = "1"
+            end
+
+            local NewHumanoid = Humanoid:Clone()
+            NewHumanoid.Parent = Character
+            NewHumanoid.Name = "Humanoid"
+
+            task.wait(0.1)
+
+            Character["1"]:Destroy()
+
+            workspace.CurrentCamera.CameraSubject = Character
+            Humanoid = Character:FindFirstChild("Humanoid")
+
+            Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+        else
+            RefreshCharacter()
+        end
+    end
+})
+
+---------------------------------------------------
+-- AUTO KEEP JUMP
+---------------------------------------------------
+
+task.spawn(function()
+    while task.wait() do
+        if JumpEnabled and Humanoid then
+            Humanoid.JumpPower = 120
+        end
+    end
+end)    return Char():WaitForChild("HumanoidRootPart")
 end
 
 local function Hum()
