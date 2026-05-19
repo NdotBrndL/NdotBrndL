@@ -1,7 +1,9 @@
---// NDOT HUB SAFE UNIVERSAL V3
---// Android + PC
---// Delta / Hydrogen / Codex / Fluxus
---// Optimized Stable Edition
+--================================================--
+-- NDOT HUB SAFE UNIVERSAL V3
+-- Android + PC
+-- Delta / Hydrogen / Codex / Fluxus
+-- Optimized Stable Edition
+--================================================--
 
 repeat task.wait() until game:IsLoaded()
 
@@ -77,8 +79,56 @@ local InfiniteJump = false
 local Noclip = false
 local Fly = false
 local ESPEnabled = false
-
 local JumpPowerEnabled = false
+
+---------------------------------------------------
+-- GOD MODE
+---------------------------------------------------
+
+local GodMode = false
+local GodConnection
+
+local function EnableGod()
+
+    GodMode = true
+
+    local Hum = GetHumanoid()
+
+    if Hum then
+
+        Hum.MaxHealth = math.huge
+        Hum.Health = math.huge
+
+        if GodConnection then
+            GodConnection:Disconnect()
+        end
+
+        GodConnection = Hum.HealthChanged:Connect(function()
+
+            if GodMode and Hum.Health < Hum.MaxHealth then
+                Hum.Health = Hum.MaxHealth
+            end
+        end)
+    end
+end
+
+local function DisableGod()
+
+    GodMode = false
+
+    local Hum = GetHumanoid()
+
+    if Hum then
+
+        if GodConnection then
+            GodConnection:Disconnect()
+            GodConnection = nil
+        end
+
+        Hum.MaxHealth = 100
+        Hum.Health = 100
+    end
+end
 
 ---------------------------------------------------
 -- WINDOW
@@ -131,13 +181,20 @@ local function ApplyStats()
         end
     end
 end
+
 ---------------------------------------------------
 -- RESPAWN FIX
 ---------------------------------------------------
 
 LocalPlayer.CharacterAdded:Connect(function()
+
     task.wait(1)
+
     ApplyStats()
+
+    if GodMode then
+        EnableGod()
+    end
 end)
 
 ---------------------------------------------------
@@ -188,11 +245,44 @@ PlayerTab:CreateSlider({
 })
 
 ---------------------------------------------------
+-- GOD MODE TOGGLE
+---------------------------------------------------
+
+PlayerTab:CreateToggle({
+    Name = "God Mode",
+    CurrentValue = false,
+
+    Callback = function(v)
+
+        if v then
+            EnableGod()
+
+            Rayfield:Notify({
+                Title = "NDOT HUB",
+                Content = "God Mode Enabled",
+                Duration = 3
+            })
+
+        else
+            DisableGod()
+
+            Rayfield:Notify({
+                Title = "NDOT HUB",
+                Content = "God Mode Disabled",
+                Duration = 3
+            })
+        end
+    end
+})
+
+---------------------------------------------------
 -- INFINITE JUMP
 ---------------------------------------------------
 
 UIS.JumpRequest:Connect(function()
+
     if InfiniteJump then
+
         local Hum = GetHumanoid()
 
         if Hum then
@@ -464,6 +554,7 @@ ServerTab:CreateButton({
     Callback = function()
 
         if setclipboard then
+
             setclipboard(game.JobId)
 
             Rayfield:Notify({
