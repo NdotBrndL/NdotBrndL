@@ -81,7 +81,7 @@ jpButton.MouseButton1Click:Connect(function()
 
 	if jpEnabled then
 		humanoid.UseJumpPower = true
-		humanoid.JumpPower = 120
+		humanoid.JumpPower = 100
 		jpButton.Text = "Jump Power ON"
 	else
 		humanoid.JumpPower = 50
