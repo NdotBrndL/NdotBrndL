@@ -1,32 +1,37 @@
 local StarterGui = game:GetService("StarterGui")
 
-local catalogModule = filtergc("table", {
-    Keys = {"CanItemBeShown"}
-}, true)
-
-local function notify(message)
+local function notify(msg)
     pcall(function()
         StarterGui:SetCore("SendNotification", {
             Title = "Catalog Avatar Creator",
-            Text = tostring(message),
+            Text = tostring(msg),
             Duration = 5
         })
     end)
 end
 
-if not catalogModule then
-    notify("Couldn't find catalog module table.")
+task.wait(3)
+
+local success, catalogModule = pcall(function()
+    return filtergc("table", {
+        Keys = {"CanItemBeShown"}
+    }, true)
+end)
+
+if not success or not catalogModule then
+    notify("Catalog module not found")
     return
 end
 
 if typeof(catalogModule.CanItemBeShown) ~= "function" then
-    notify("CanItemBeShown is not a function.")
+    notify("CanItemBeShown invalid")
     return
 end
 
-local old
-old = hookfunction(catalogModule.CanItemBeShown, newcclosure(function(...)
-    return true, nil
+local oldFunction = catalogModule.CanItemBeShown
+
+hookfunction(oldFunction, newcclosure(function(...)
+    return true
 end))
 
-notify("Hooked CanItemBeShown successfully.")
+notify("Hook successful")
