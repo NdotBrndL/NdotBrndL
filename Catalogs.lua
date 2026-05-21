@@ -1,22 +1,32 @@
-the search false positives in catalog avatar creator were annoying so i made this thing that bypasses it
-```lua
-local starterGui = game:GetService("StarterGui")
-local catalogModule = filtergc("table", { Keys = { "CanItemBeShown" }}, true)
+local StarterGui = game:GetService("StarterGui")
+
+local catalogModule = filtergc("table", {
+    Keys = {"CanItemBeShown"}
+}, true)
 
 local function notify(message)
-    starterGui:SetCore("SendNotification", {
-        Title = "Catalog Avatar Creator",
-        Text = message
-    })
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Catalog Avatar Creator",
+            Text = tostring(message),
+            Duration = 5
+        })
+    end)
 end
 
 if not catalogModule then
-    return notify("Couldn't find catalog module table.")
+    notify("Couldn't find catalog module table.")
+    return
 end
 
-hookfunction(catalogModule.CanItemBeShown, newcclosure(function()
+if typeof(catalogModule.CanItemBeShown) ~= "function" then
+    notify("CanItemBeShown is not a function.")
+    return
+end
+
+local old
+old = hookfunction(catalogModule.CanItemBeShown, newcclosure(function(...)
     return true, nil
-end, "CanItemBeShown"))
+end))
 
 notify("Hooked CanItemBeShown successfully.")
-```
