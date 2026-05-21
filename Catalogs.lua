@@ -14,7 +14,7 @@ if not catalogModule then
     return notify("Couldn't find catalog module table.")
 end
 
-hookfunction(catalogModule.CanItemBeShown, newlclosure(function()
+hookfunction(catalogModule.CanItemBeShown, newcclosure(function()
     return true, nil
 end, "CanItemBeShown"))
 
