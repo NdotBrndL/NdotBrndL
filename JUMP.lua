@@ -3,4 +3,4 @@ local humanoid = player.Character or player.CharacterAdded:Wait()
 
 humanoid = humanoid:WaitForChild("Humanoid")
 humanoid.UseJumpPower = true
-humanoid.JumpPower = 130
+humanoid.JumpPower = 120
