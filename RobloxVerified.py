@@ -926,7 +926,7 @@ class pip:
             version = self._platform.mac_ver()[0]
             version_tuple = tuple(map(int, version.split('.')))
             while len(version_tuple) < 3: version_tuple += (0,)
-            while len(macos_version) < 3: min_version += (0,)
+            while len(macos_version) < 3: macos_version += (0,)
             return version_tuple >= macos_version
         else: return False
     def pythonInstall(self, version: str="", beta: bool=False, silent: bool=False, manual: bool=False, arch: str=None):
