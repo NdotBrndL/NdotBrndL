@@ -1443,7 +1443,7 @@ class pip:
                 5000
             )
         elif self._main_os == "Darwin":
-            new_path = self._os.path.expandvars(self._os.path.expanduser(new_path))
+            new_path = self._os.path.expandvars(self._os.path.expanduser(path_to_add))
             shell = self._os.path.basename(self._os.environ.get("SHELL", "zsh"))
             rc_file = self._os.path.expanduser(f"~/.{shell}rc")
             export_line = f'export PATH="{new_path}:$PATH"'
