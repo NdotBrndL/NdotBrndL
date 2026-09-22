@@ -1535,8 +1535,8 @@ try:
             generated_filtered_json[i]["approve_groups"] = generated[str(i)]
             generated_filtered_json[i]["scan_timestamp"] = int(datetime.datetime.now(datetime.UTC).timestamp())
             generated_filtered_json[i]["scan_duration"] = round(datetime.datetime.now(datetime.UTC).timestamp() - start_time, 2)
-            printMainMessage(f"Name:Eliuuuu {generated_filtered_json[i]['displayName']} [@{generated_filtered_json[i]['name']}]")
-            printMainMessage(f"User ID:Liuliuliu116 {generated_filtered_json[i]['id']}")
+            printMainMessage(f"Name: {generated_filtered_json[i]['displayName']} [@{generated_filtered_json[i]['name']}]")
+            printMainMessage(f"User ID: {generated_filtered_json[i]['id']}")
             printMainMessage(f"Groups: {', '.join(owned_group_names)}")
             printMainMessage(f"Color: {generated_filtered_json[i]['hexColor']}")
             printMainMessage(f"Scan Duration: {generated_filtered_json[i]['scan_duration']}s")
